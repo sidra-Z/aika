@@ -280,10 +280,10 @@ public class INeuron extends AbstractNode<Neuron> implements Comparable<INeuron>
 
             if (iAct == act) continue;
 
-            int t = s.key.isRecurrent ? REC : DIR;
+            int t = is.sa.isRecurrent() ? REC : DIR;
             sum[t] += is.s.value * s.weight;
 
-            if (!s.key.isRecurrent && !s.isNegative() && sum[DIR] + sum[REC] >= 0.0 && fired < 0) {
+            if (!is.sa.isRecurrent() && !s.isNegative() && sum[DIR] + sum[REC] >= 0.0 && fired < 0) {
                 fired = iAct.rounds.get(round).fired + 1;
             }
         }
@@ -307,30 +307,6 @@ public class INeuron extends AbstractNode<Neuron> implements Comparable<INeuron>
     }
 
 
-    private State getInitialState(Coverage c) {
-        return new State(
-                c == Coverage.SELECTED ? 1.0 : 0.0,
-                0,
-                NormWeight.ZERO_WEIGHT
-        );
-    }
-
-
-    private State getInputState(int round, SearchNode sn, InterprNode o, Synapse s, Activation iAct) {
-        InterprNode io = iAct.key.interpretation;
-
-        State is = State.ZERO;
-        if (s.key.isRecurrent) {
-            if (!s.isNegative() || !checkSelfReferencingForSelected(o, io, 0)) {
-                is = round == 0 ? getInitialState(sn.getCoverage(io)) : iAct.rounds.get(round - 1);
-            }
-        } else {
-            is = iAct.rounds.get(round);
-        }
-        return is;
-    }
-
-
     private List<InputState> getInputStates(Activation act, int round, SearchNode sn) {
         InterprNode o = act.key.interpretation;
         ArrayList<InputState> tmp = new ArrayList<>();
@@ -342,7 +318,7 @@ public class INeuron extends AbstractNode<Neuron> implements Comparable<INeuron>
                 maxInputState = null;
             }
 
-            State s = getInputState(round, sn, o, sa.synapse, sa.input);
+            State s = getInputState(round, sn, o, sa);
             if (maxInputState == null || maxInputState.s.value < s.value) {
                 maxInputState = new InputState(sa, s);
             }
@@ -353,6 +329,31 @@ public class INeuron extends AbstractNode<Neuron> implements Comparable<INeuron>
         }
 
         return tmp;
+    }
+
+
+    private State getInputState(int round, SearchNode sn, InterprNode o, SynapseActivation sa) {
+        Activation iAct = sa.input;
+        InterprNode io = iAct.key.interpretation;
+
+        State is = State.ZERO;
+        if (sa.isRecurrent()) {
+            if (!sa.synapse.isNegative() || !checkSelfReferencingForSelected(o, io, 0)) {
+                is = round == 0 ? getInitialState(sn.getCoverage(io)) : iAct.rounds.get(round - 1);
+            }
+        } else {
+            is = iAct.rounds.get(round);
+        }
+        return is;
+    }
+
+
+    private State getInitialState(Coverage c) {
+        return new State(
+                c == Coverage.SELECTED ? 1.0 : 0.0,
+                0,
+                NormWeight.ZERO_WEIGHT
+        );
     }
 
 
@@ -541,7 +542,7 @@ public class INeuron extends AbstractNode<Neuron> implements Comparable<INeuron>
     private static void markConflicts(Activation iAct, Activation oAct, long v) {
         oAct.key.interpretation.markedConflict = v;
         for (SynapseActivation sa : iAct.neuronOutputs) {
-            if (sa.synapse.key.isRecurrent && sa.synapse.isNegative()) {
+            if (sa.isRecurrent() && sa.synapse.isNegative()) {
                 sa.output.key.interpretation.markedConflict = v;
             }
         }
@@ -577,7 +578,7 @@ public class INeuron extends AbstractNode<Neuron> implements Comparable<INeuron>
             iAct.addSynapseActivation(0, sa);
             oAct.addSynapseActivation(1, sa);
 
-            if (s.isNegative() && sk.isRecurrent) {
+            if (s.isNegative()) {
                 recNegTmp.add(rAct);
             }
         });

@@ -651,11 +651,12 @@ public class SearchNode implements Comparable<SearchNode> {
     }
 
 
+    // TODO:
     public boolean affectsUnknown(SearchNode p) {
         for(InterprNode n: p.refinement) {
             if(n.act != null) {
                 for(SynapseActivation sa: n.act.neuronOutputs) {
-                    if(sa.synapse.key.isRecurrent && !sa.synapse.isNegative()) {
+                    if(sa.isRecurrent() && !sa.synapse.isNegative()) {
                         if(getCoverage(sa.output.key.interpretation) == Coverage.UNKNOWN) return true;
                     }
                 }
@@ -713,9 +714,9 @@ public class SearchNode implements Comparable<SearchNode> {
 
         @Override
         public int compareTo(Candidate c) {
-            int r = Integer.compare(minBegin, c.minBegin);
+            int r = Integer.compare(maxEnd, c.maxEnd);
             if(r != 0) return r;
-            r = Integer.compare(c.maxEnd, maxEnd);
+            r = Integer.compare(c.minBegin, minBegin);
             if(r != 0) return r;
 
             r = Integer.compare(sequence, c.sequence);

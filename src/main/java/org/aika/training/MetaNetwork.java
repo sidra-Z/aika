@@ -79,7 +79,6 @@ public class MetaNetwork {
                 if (inb != null) {
                     Synapse.Key osk = sa.synapse.key;
                     Synapse.Key nsk = new Synapse.Key(
-                            osk.isRecurrent,
                             osk.relativeRid != null ?
                                     osk.relativeRid :
                                     (ss.metaRelativeRid && ridOffset != null && rid != null ? rid - ridOffset : null),

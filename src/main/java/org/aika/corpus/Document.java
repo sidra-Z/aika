@@ -551,7 +551,7 @@ public class Document implements Comparable<Document> {
 
         public void propagateWeight(int round, Activation act)  {
             for(Activation.SynapseActivation sa: act.neuronOutputs) {
-                int r = sa.synapse.key.isRecurrent ? round + 1 : round;
+                int r = sa.isRecurrent() ? round + 1 : round;
                 add(r, sa.output);
             }
         }
@@ -579,7 +579,7 @@ public class Document implements Comparable<Document> {
             for(Activation act: acts) {
                 add(0, act);
                 for(Activation.SynapseActivation sa: act.neuronOutputs) {
-                    if(sa.synapse.key.isRecurrent) {
+                    if(sa.isRecurrent()) {
                         add(0, sa.output);
                     }
                 }

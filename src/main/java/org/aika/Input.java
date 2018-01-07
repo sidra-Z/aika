@@ -31,7 +31,6 @@ import org.aika.neuron.Synapse;
  * @author Lukas Molzberger
  */
 public class Input implements Comparable<Input> {
-    boolean recurrent;
     Neuron neuron;
     double weight;
     double bias;
@@ -54,7 +53,6 @@ public class Input implements Comparable<Input> {
      * @return
      */
     public Input setRecurrent(boolean recurrent) {
-        this.recurrent = recurrent;
         return this;
     }
 
@@ -196,7 +194,6 @@ public class Input implements Comparable<Input> {
                 neuron,
                 outputNeuron,
                 new Synapse.Key(
-                        recurrent,
                         relativeRid,
                         absoluteRid,
                         rangeMatch,

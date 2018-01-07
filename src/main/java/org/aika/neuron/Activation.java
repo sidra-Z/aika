@@ -238,7 +238,7 @@ public final class Activation extends NodeActivation<OrNode> {
         if(sequence != null) return sequence;
 
         sequence = 0;
-        neuronInputs.stream().filter(sa -> !sa.synapse.key.isRecurrent).forEach(sa -> sequence = Math.max(sequence, sa.input.getSequence() + 1));
+        neuronInputs.stream().filter(sa -> !sa.isRecurrent()).forEach(sa -> sequence = Math.max(sequence, sa.input.getSequence() + 1));
         return sequence;
     }
 
@@ -268,6 +268,11 @@ public final class Activation extends NodeActivation<OrNode> {
             this.synapse = s;
             this.input = input;
             this.output = output;
+        }
+
+
+        public boolean isRecurrent() {
+            return false;
         }
     }
 

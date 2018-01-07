@@ -280,7 +280,7 @@ public class Synapse implements Writable {
         public static final Key MIN_KEY = new Key();
         public static final Key MAX_KEY = new Key();
 
-        public boolean isRecurrent;
+//        public boolean isRecurrent;
         public Integer relativeRid;
         public Integer absoluteRid;
         public Relation rangeMatch;
@@ -289,8 +289,7 @@ public class Synapse implements Writable {
         public Key() {}
 
 
-        public Key(boolean isRecurrent, Integer relativeRid, Integer absoluteRid, Relation rangeMatch, Output rangeOutput) {
-            this.isRecurrent = isRecurrent;
+        public Key(Integer relativeRid, Integer absoluteRid, Relation rangeMatch, Output rangeOutput) {
             this.relativeRid = relativeRid;
             this.absoluteRid = absoluteRid;
             this.rangeMatch = rangeMatch;
@@ -301,7 +300,6 @@ public class Synapse implements Writable {
         public Key createInputNodeKey() {
             return relativeRid != null ?
                     new Key(
-                            isRecurrent,
                             0,
                             absoluteRid,
                             rangeMatch,
@@ -312,7 +310,6 @@ public class Synapse implements Writable {
 
         @Override
         public void write(DataOutput out) throws IOException {
-            out.writeBoolean(isRecurrent);
             out.writeBoolean(relativeRid != null);
             if(relativeRid != null) out.writeByte(relativeRid);
             out.writeBoolean(absoluteRid != null);
@@ -324,7 +321,6 @@ public class Synapse implements Writable {
 
         @Override
         public void readFields(DataInput in, Model m) throws IOException {
-            isRecurrent = in.readBoolean();
             if(in.readBoolean()) relativeRid = (int) in.readByte();
             if(in.readBoolean()) absoluteRid = (int) in.readByte();
             rangeMatch = Relation.read(in, m);
@@ -348,9 +344,7 @@ public class Synapse implements Writable {
             if(this == MAX_KEY && k != MAX_KEY) return 1;
             else if(this != MAX_KEY && k == MAX_KEY) return -1;
 
-            int r = Boolean.compare(isRecurrent, k.isRecurrent);
-            if(r != 0) return r;
-            r = Utils.compareInteger(relativeRid, k.relativeRid);
+            int r = Utils.compareInteger(relativeRid, k.relativeRid);
             if(r != 0) return r;
             r = Utils.compareInteger(absoluteRid, k.absoluteRid);
             if(r != 0) return r;
