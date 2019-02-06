@@ -30,11 +30,12 @@ public abstract class PositionRelation extends Relation {
         this.toSlot = toSlot;
     }
 
-    public PositionRelation(int fromSlot, int toSlot, boolean optional, boolean follow) {
+    public PositionRelation(int fromSlot, int toSlot, boolean optional, boolean follow, Weight w) {
         this.fromSlot = fromSlot;
         this.toSlot = toSlot;
         this.optional = optional;
         this.follow = follow;
+        this.weight = w;
     }
 
 
@@ -131,8 +132,8 @@ public abstract class PositionRelation extends Relation {
             super(fromSlot, toSlot);
         }
 
-        public Equals(int fromSlot, int toSlot, boolean optional, boolean follow) {
-            super(fromSlot, toSlot, optional, follow);
+        public Equals(int fromSlot, int toSlot, boolean optional, boolean follow, Weight w) {
+            super(fromSlot, toSlot, optional, follow, w);
         }
 
         @Override
@@ -142,12 +143,17 @@ public abstract class PositionRelation extends Relation {
 
         @Override
         public Relation invert() {
-            return new Equals(toSlot, fromSlot, optional, follow);
+            return new Equals(toSlot, fromSlot, optional, follow, weight);
         }
 
         @Override
         public Relation setOptionalAndFollow(boolean optional, boolean follow) {
-            return new Equals(fromSlot, toSlot, optional, follow);
+            return new Equals(fromSlot, toSlot, optional, follow, weight);
+        }
+
+        @Override
+        public Relation setWeight(Weight w) {
+            return new Equals(fromSlot, toSlot, optional, follow, w);
         }
 
         @Override
@@ -200,8 +206,8 @@ public abstract class PositionRelation extends Relation {
             this.orEquals = orEquals;
         }
 
-        public LessThan(int fromSlot, int toSlot, boolean orEquals, boolean optional, boolean follow, int maxLength) {
-            super(fromSlot, toSlot, optional, follow);
+        public LessThan(int fromSlot, int toSlot, boolean orEquals, boolean optional, boolean follow, int maxLength, Weight w) {
+            super(fromSlot, toSlot, optional, follow, w);
             this.orEquals = orEquals;
             this.maxLength = maxLength;
         }
@@ -213,12 +219,17 @@ public abstract class PositionRelation extends Relation {
 
         @Override
         public Relation invert() {
-            return new GreaterThan(toSlot, fromSlot, orEquals, optional, follow, maxLength);
+            return new GreaterThan(toSlot, fromSlot, orEquals, optional, follow, maxLength, weight);
         }
 
         @Override
         public Relation setOptionalAndFollow(boolean optional, boolean follow) {
-            return new LessThan(fromSlot, toSlot, orEquals, optional, follow, maxLength);
+            return new LessThan(fromSlot, toSlot, orEquals, optional, follow, maxLength, weight);
+        }
+
+        @Override
+        public Relation setWeight(Weight w) {
+            return new LessThan(fromSlot, toSlot, orEquals, optional, follow, maxLength, w);
         }
 
         @Override
@@ -287,8 +298,8 @@ public abstract class PositionRelation extends Relation {
             this.orEquals = orEquals;
         }
 
-        public GreaterThan(int fromSlot, int toSlot, boolean orEquals, boolean optional, boolean follow, int maxLength) {
-            super(fromSlot, toSlot, optional, follow);
+        public GreaterThan(int fromSlot, int toSlot, boolean orEquals, boolean optional, boolean follow, int maxLength, Weight w) {
+            super(fromSlot, toSlot, optional, follow, w);
             this.orEquals = orEquals;
             this.maxLength = maxLength;
         }
@@ -300,12 +311,17 @@ public abstract class PositionRelation extends Relation {
 
         @Override
         public Relation invert() {
-            return new LessThan(toSlot, fromSlot, orEquals, optional, follow, maxLength);
+            return new LessThan(toSlot, fromSlot, orEquals, optional, follow, maxLength, weight);
         }
 
         @Override
         public Relation setOptionalAndFollow(boolean optional, boolean follow) {
-            return new GreaterThan(fromSlot, toSlot, orEquals, optional, follow, maxLength);
+            return new GreaterThan(fromSlot, toSlot, orEquals, optional, follow, maxLength, weight);
+        }
+
+        @Override
+        public Relation setWeight(Weight w) {
+            return new GreaterThan(fromSlot, toSlot, orEquals, optional, follow, maxLength, weight);
         }
 
         @Override

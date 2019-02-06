@@ -1,6 +1,7 @@
 package network.aika.neuron.activation;
 
 import network.aika.Document;
+import network.aika.Model;
 import network.aika.Utils;
 import network.aika.Writable;
 import network.aika.lattice.OrNode;
@@ -10,6 +11,7 @@ import network.aika.neuron.INeuron.Type;
 import network.aika.neuron.Neuron;
 import network.aika.neuron.Synapse;
 import network.aika.neuron.activation.SearchNode.Decision;
+import network.aika.neuron.relation.Relation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -291,6 +293,11 @@ public final class Activation extends OrActivation {
         long v = doc.visitedCounter++;
         markPredecessor(v, 0);
 
+        Set<Relation.Weight> relationWeights = null;
+        if(Model.ENABLE_RELATION_WEIGHTS) {
+            relationWeights = new HashSet<>();
+        }
+
         for (InputState is: getInputStates(round, v)) {
             Synapse s = is.l.synapse;
             Activation iAct = is.l.input;
@@ -308,6 +315,10 @@ public final class Activation extends OrActivation {
 
             if (!s.isRecurrent && !s.isNegative() && net >= 0.0 && fired < 0) {
                 fired = iAct.rounds.get(round).fired + 1;
+            }
+
+            if(Model.ENABLE_RELATION_WEIGHTS) {
+                collectRelationWeights(relationWeights, is, s);
             }
         }
 
@@ -350,6 +361,27 @@ public final class Activation extends OrActivation {
                     -1,
                     newWeight
             );
+        }
+    }
+
+    public void collectRelationWeights(Set<Relation.Weight> relationWeights, InputState is, Synapse s) {
+        for(Map.Entry<Integer, Relation> me: s.relations.entrySet()) {
+            Integer relId = me.getKey();
+            Relation r = me.getValue();
+
+            Activation rAct = null;
+            if(relId == Synapse.OUTPUT) {
+                rAct = this;
+            } else {
+                Link rl = getLinkBySynapseId(relId);
+                if(rl != null) {
+                    rAct = rl.input;
+                }
+            }
+
+            if(rAct != null && r.test(is.l.input, rAct)) {
+                relationWeights.add(r.getWeight());
+            }
         }
     }
 

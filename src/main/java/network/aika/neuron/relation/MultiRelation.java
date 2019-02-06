@@ -83,6 +83,12 @@ public class MultiRelation extends Relation {
 
 
     @Override
+    public Relation setWeight(Weight w) {
+        return this;
+    }
+
+
+    @Override
     public void mapSlots(Map<Integer, Position> slots, Activation act) {
         for(Relation rel: relations) {
             rel.mapSlots(slots, act);

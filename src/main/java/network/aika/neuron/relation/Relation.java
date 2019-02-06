@@ -29,7 +29,7 @@ public abstract class Relation implements Comparable<Relation>, Writable {
 
     public static Relation EQUALS = new MultiRelation(
             new Equals(BEGIN, BEGIN),
-            new Equals(END, END, false, false)
+            new Equals(END, END, false, false, null)
     );
     public static Relation BEGIN_EQUALS = new Equals(BEGIN, BEGIN);
     public static Relation END_EQUALS = new Equals(END, END);
@@ -37,15 +37,15 @@ public abstract class Relation implements Comparable<Relation>, Writable {
     public static Relation END_TO_BEGIN_EQUALS = new Equals(END, BEGIN);
     public static Relation CONTAINS = new MultiRelation(
             new LessThan(BEGIN, BEGIN, true),
-            new GreaterThan(END, END, true, false, false, Integer.MAX_VALUE)
+            new GreaterThan(END, END, true, false, false, Integer.MAX_VALUE, null)
     );
     public static Relation CONTAINED_IN = new MultiRelation(
             new GreaterThan(BEGIN, BEGIN, true),
-            new LessThan(END, END, true, false, false, Integer.MAX_VALUE)
+            new LessThan(END, END, true, false, false, Integer.MAX_VALUE, null)
     );
     public static Relation OVERLAPS = new MultiRelation(
             new LessThan(BEGIN, END, false),
-            new GreaterThan(END, BEGIN, false, false, false, Integer.MAX_VALUE)
+            new GreaterThan(END, BEGIN, false, false, false, Integer.MAX_VALUE, null)
     );
     public static Relation BEFORE = new LessThan(END, BEGIN, true);
     public static Relation AFTER = new GreaterThan(BEGIN, END, true);
@@ -54,6 +54,7 @@ public abstract class Relation implements Comparable<Relation>, Writable {
 
     protected boolean optional;
     protected boolean follow = true;
+    protected Weight weight;
 
 
     public boolean isOptional() {
@@ -63,6 +64,8 @@ public abstract class Relation implements Comparable<Relation>, Writable {
     public boolean isFollow() {
         return follow;
     }
+
+
 
     @Override
     public int compareTo(Relation rel) {
@@ -90,6 +93,11 @@ public abstract class Relation implements Comparable<Relation>, Writable {
 
     public abstract Relation setOptionalAndFollow(boolean optional, boolean follow);
 
+    public abstract Relation setWeight(Weight w);
+
+    public Weight getWeight() {
+        return weight;
+    }
 
     public Relation() {
     }
@@ -168,6 +176,9 @@ public abstract class Relation implements Comparable<Relation>, Writable {
 
         private Relation relation;
 
+        private double weight;
+        private double bias;
+
 
         /**
          * This parameter allows to specify whether the relations connected to thy synapse refer to the activation of the
@@ -203,6 +214,19 @@ public abstract class Relation implements Comparable<Relation>, Writable {
             return relation;
         }
 
+
+        public Builder setWeight(double weight) {
+            this.weight = weight;
+            return this;
+        }
+
+
+        public Builder setBias(double bias) {
+            this.bias = bias;
+            return this;
+        }
+
+
         public void connect(Neuron n) {
             Map<Integer, Relation> fromRel = getRelationsMap(from, n);
             Map<Integer, Relation> toRel = getRelationsMap(to, n);
@@ -235,7 +259,7 @@ public abstract class Relation implements Comparable<Relation>, Writable {
         public Any() {
         }
 
-        public Any(boolean optional, boolean follow) {
+        public Any(boolean optional, boolean follow, Weight w) {
             super(optional, follow);
         }
 
@@ -284,11 +308,61 @@ public abstract class Relation implements Comparable<Relation>, Writable {
 
         @Override
         public Relation setOptionalAndFollow(boolean optional, boolean follow) {
-            return new Any(optional, follow);
+            return new Any(optional, follow, weight);
+        }
+
+        @Override
+        public Relation setWeight(Weight w) {
+            return new Any(optional, follow, w);
         }
 
         @Override
         public void registerRequiredSlots(Neuron input) {
+        }
+    }
+
+
+    public static class Weight implements Writable {
+
+        public double weight;
+        public double bias;
+
+
+        public double getWeight() {
+            return weight;
+        }
+
+        public void setWeight(double weight) {
+            this.weight = weight;
+        }
+
+        public double getBias() {
+            return bias;
+        }
+
+        public void setBias(double bias) {
+            this.bias = bias;
+        }
+
+
+        @Override
+        public void write(DataOutput out) throws IOException {
+            out.writeDouble(weight);
+            out.writeDouble(bias);
+        }
+
+
+        @Override
+        public void readFields(DataInput in, Model m) throws IOException {
+            weight = in.readDouble();
+            bias = in.readDouble();
+        }
+
+
+        public static Weight read(DataInput in, Model m) throws IOException {
+            Weight w = new Weight();
+            w.readFields(in, m);
+            return w;
         }
     }
 }

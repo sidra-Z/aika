@@ -43,6 +43,9 @@ import java.util.concurrent.atomic.AtomicLong;
  */
 public class Model {
 
+    public static boolean ENABLE_RELATION_WEIGHTS = false;
+
+
     public int numberOfThreads = 1;
 
     public int[] lastCleanup;

@@ -146,9 +146,10 @@ public abstract class AncestorRelation extends Relation {
         public CommonAncestor() {
         }
 
-        public CommonAncestor(boolean optional, boolean follow) {
+        public CommonAncestor(boolean optional, boolean follow, Weight w) {
             this.optional = optional;
             this.follow = follow;
+            this.weight = w;
         }
 
         @Override
@@ -158,12 +159,17 @@ public abstract class AncestorRelation extends Relation {
 
         @Override
         public Relation invert() {
-            return new CommonAncestor(optional, follow);
+            return new CommonAncestor(optional, follow, weight);
         }
 
         @Override
         public Relation setOptionalAndFollow(boolean optional, boolean follow) {
-            return new CommonAncestor(optional, follow);
+            return new CommonAncestor(optional, follow, weight);
+        }
+
+        @Override
+        public Relation setWeight(Weight w) {
+            return new CommonAncestor(optional, follow, w);
         }
 
         @Override
@@ -195,25 +201,36 @@ public abstract class AncestorRelation extends Relation {
         public IsDescendantOf() {
         }
 
-        public IsDescendantOf(boolean optional, boolean follow) {
+        public IsDescendantOf(boolean optional, boolean follow, Weight w) {
             this.optional = optional;
             this.follow = follow;
+            this.weight = w;
         }
+
 
         @Override
         public int getType() {
             return TYPE;
         }
 
+
         @Override
         public Relation invert() {
-            return new IsAncestorOf(optional, follow);
+            return new IsAncestorOf(optional, follow, weight);
         }
+
 
         @Override
         public Relation setOptionalAndFollow(boolean optional, boolean follow) {
-            return new IsDescendantOf(optional, follow);
+            return new IsDescendantOf(optional, follow, weight);
         }
+
+
+        @Override
+        public Relation setWeight(Weight w) {
+            return new IsDescendantOf(optional, follow, w);
+        }
+
 
         @Override
         public boolean test(Activation act, Activation linkedAct) {
@@ -245,9 +262,10 @@ public abstract class AncestorRelation extends Relation {
         public IsAncestorOf() {
         }
 
-        public IsAncestorOf(boolean optional, boolean follow) {
+        public IsAncestorOf(boolean optional, boolean follow, Weight w) {
             this.optional = optional;
             this.follow = follow;
+            this.weight = w;
         }
 
         @Override
@@ -257,12 +275,17 @@ public abstract class AncestorRelation extends Relation {
 
         @Override
         public Relation invert() {
-            return new IsDescendantOf(optional, follow);
+            return new IsDescendantOf(optional, follow, weight);
         }
 
         @Override
         public Relation setOptionalAndFollow(boolean optional, boolean follow) {
-            return new IsAncestorOf(optional, follow);
+            return new IsAncestorOf(optional, follow, weight);
+        }
+
+        @Override
+        public Relation setWeight(Weight w) {
+            return new IsAncestorOf(optional, follow, w);
         }
 
         @Override
@@ -294,9 +317,10 @@ public abstract class AncestorRelation extends Relation {
         public NotDescendantOf() {
         }
 
-        public NotDescendantOf(boolean optional, boolean follow) {
+        public NotDescendantOf(boolean optional, boolean follow, Weight w) {
             this.optional = optional;
             this.follow = follow;
+            this.weight = w;
         }
 
         @Override
@@ -306,12 +330,17 @@ public abstract class AncestorRelation extends Relation {
 
         @Override
         public Relation invert() {
-            return new NotAncestorOf(optional, follow);
+            return new NotAncestorOf(optional, follow, weight);
         }
 
         @Override
         public Relation setOptionalAndFollow(boolean optional, boolean follow) {
-            return new NotDescendantOf(optional, follow);
+            return new NotDescendantOf(optional, follow, weight);
+        }
+
+        @Override
+        public Relation setWeight(Weight w) {
+            return new NotDescendantOf(optional, follow, w);
         }
 
         @Override
@@ -346,9 +375,10 @@ public abstract class AncestorRelation extends Relation {
         public NotAncestorOf() {
         }
 
-        public NotAncestorOf(boolean optional, boolean follow) {
+        public NotAncestorOf(boolean optional, boolean follow, Weight w) {
             this.optional = optional;
             this.follow = follow;
+            this.weight = w;
         }
 
         @Override
@@ -358,12 +388,17 @@ public abstract class AncestorRelation extends Relation {
 
         @Override
         public Relation invert() {
-            return new NotDescendantOf(optional, follow);
+            return new NotDescendantOf(optional, follow, weight);
         }
 
         @Override
         public Relation setOptionalAndFollow(boolean optional, boolean follow) {
-            return new NotAncestorOf(optional, follow);
+            return new NotAncestorOf(optional, follow, weight);
+        }
+
+        @Override
+        public Relation setWeight(Weight w) {
+            return new NotAncestorOf(optional, follow, w);
         }
 
         @Override
