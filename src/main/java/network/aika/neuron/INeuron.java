@@ -18,8 +18,10 @@ package network.aika.neuron;
 
 
 import network.aika.*;
-import network.aika.lattice.OrNode;
+import network.aika.lattice.Node;
+import network.aika.lattice.NodeActivation;
 import network.aika.neuron.activation.Activation;
+import network.aika.neuron.activation.Linker;
 import network.aika.neuron.activation.Position;
 import network.aika.lattice.InputNode;
 import network.aika.neuron.relation.Relation;
@@ -34,6 +36,7 @@ import java.util.stream.Stream;
 
 import static network.aika.neuron.INeuron.Type.EXCITATORY;
 import static network.aika.neuron.INeuron.Type.INPUT;
+import static network.aika.neuron.Synapse.OUTPUT;
 import static network.aika.neuron.Synapse.State.CURRENT;
 import static network.aika.neuron.Synapse.State.NEXT;
 
@@ -95,7 +98,7 @@ public class INeuron extends AbstractNode<Neuron> implements Comparable<INeuron>
     TreeMap<Synapse, Synapse> passiveInputSynapses = null;
 
     private Provider<InputNode> outputNode;
-    private Provider<OrNode> inputNode;
+    private Node.OutputEntry inputNode;
 
 
     ReadWriteLock lock = new ReadWriteLock();
@@ -149,8 +152,13 @@ public class INeuron extends AbstractNode<Neuron> implements Comparable<INeuron>
     }
 
 
-    public Provider<OrNode> getInputNode() {
+    public Node.OutputEntry getInputNode() {
         return inputNode;
+    }
+
+
+    public void setInputNode(Node.OutputEntry n) {
+        inputNode = n;
     }
 
 
@@ -332,6 +340,12 @@ public class INeuron extends AbstractNode<Neuron> implements Comparable<INeuron>
     }
 
 
+    public void unlinkInputSynapses() {
+        for(Synapse s: inputSynapses.values()) {
+            s.getInput().get().getOutputSynapses().remove(s);
+        }
+    }
+
 
     private static class ActKey implements Comparable<ActKey> {
         int slot;
@@ -387,11 +401,7 @@ public class INeuron extends AbstractNode<Neuron> implements Comparable<INeuron>
 
         provider = new Neuron(m, this);
 
-        OrNode node = new OrNode(m);
         InputNode iNode = new InputNode(m);
-
-        node.setOutputNeuron(provider);
-        inputNode = node.getProvider();
 
         iNode.setInputNeuron(provider);
         outputNode = iNode.getProvider();
@@ -545,6 +555,86 @@ public class INeuron extends AbstractNode<Neuron> implements Comparable<INeuron>
     public void propagate(Activation act) {
         Document doc = act.getDocument();
         outputNode.get(doc).addActivation(act);
+
+        if(outputSynapses != null) {
+            for(Synapse s: outputSynapses.values()) {
+                if(!s.isRecurrent() && (!s.isWeak(CURRENT) || s.getOutput().getType() == EXCITATORY)) {
+                    propagate(s, act);
+                }
+            }
+        }
+    }
+
+
+    private void propagate(Synapse s, Activation iAct) {
+        Document doc = iAct.getDocument();
+        INeuron n = s.getOutput().get(doc);
+
+        Activation act = lookupActivation(s, iAct);
+        /*Activation act = n.lookupActivation(doc, slots, l -> {
+            Synapse s = l.getSynapse();
+            if(!s.isIdentity()) return true;
+
+            Integer i = oe.revSynapseIds.get(s.getId());
+            Activation iAct = doc.getLinker().computeInputActivation(s, inputAct.getInputActivation(i));
+            return i != null && l.getInput() == iAct;
+        });
+*/
+        if(act == null) {
+            act = new Activation(doc, n, getSlots(s, iAct));
+        }
+
+        doc.getUpperBoundQueue().add(act);
+
+        Linker linker = doc.getLinker();
+        linker.link(s, iAct, act);
+        linker.process();
+    }
+
+
+    private SortedMap<Integer, Position> getSlots(Synapse s, Activation iAct) {
+        SortedMap<Integer, Position> slots = new TreeMap<>();
+        for (Map.Entry<Integer, Relation> me : s.getRelations().entrySet()) {
+            Relation rel = me.getValue();
+            if (me.getKey() == Synapse.OUTPUT) {
+                rel.mapSlots(slots, iAct);
+            }
+        }
+        return slots;
+    }
+
+
+    private Activation lookupActivation(Synapse os, Activation iAct) {
+        for (Map.Entry<Integer, Relation> me : os.getRelations().entrySet()) {
+            Integer relSynId = me.getKey();
+            Relation rel = me.getValue();
+
+            Activation existingAct = null;
+            if (relSynId != OUTPUT) {
+                Synapse rs = os.getOutput().getSynapseById(relSynId);
+                if (rs != null) {
+                    existingAct = rel
+                            .invert()
+                            .getActivations(rs.getInput().get(), iAct)
+                            .flatMap(act -> act.getOutputLinksBySynapse(rs))
+                            .map(rl -> rl.getOutput())
+                            .findFirst()
+                            .orElse(null);
+                }
+            } else {
+                existingAct = rel
+                        .invert()
+                        .getActivations(os.getOutput().get(), iAct)
+                        .findFirst()
+                        .orElse(null);
+            }
+
+            if (existingAct != null) {
+                return existingAct;
+            }
+        }
+
+        return null;
     }
 
 
@@ -595,7 +685,7 @@ public class INeuron extends AbstractNode<Neuron> implements Comparable<INeuron>
 
         out.writeBoolean(inputNode != null);
         if (inputNode != null) {
-            out.writeInt(inputNode.getId());
+            inputNode.write(out);
         }
 
         out.writeInt(synapseIdCounter);
@@ -656,8 +746,7 @@ public class INeuron extends AbstractNode<Neuron> implements Comparable<INeuron>
         outputNode = m.lookupNodeProvider(in.readInt());
 
         if (in.readBoolean()) {
-            Integer nId = in.readInt();
-            inputNode = m.lookupNodeProvider(nId);
+            inputNode = Node.OutputEntry.read(in, m);
         }
 
         synapseIdCounter = in.readInt();

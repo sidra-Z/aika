@@ -87,7 +87,7 @@ class AndNode extends Node<AndNode, AndActivation> {
             }
         }
 
-        propagateToOrNode(act);
+        propagateToOutputNeuron(act);
     }
 
 

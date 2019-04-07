@@ -200,8 +200,6 @@ public class PositionRelationTest {
 
         Neuron n = Neuron.init(m.createNeuron("PATTERN"), 0.5, INeuron.Type.EXCITATORY, inputs.toArray(new Neuron.Builder[inputs.size()]));
 
-        System.out.println(n.get().getInputNode().get().logicToString());
-
         Document doc = m.createDocument("abc Huettenheim cba", 0);
 
         for (int i = 0; i < doc.length(); i++) {

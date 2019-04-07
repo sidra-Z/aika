@@ -19,10 +19,8 @@ package network.aika.network;
 
 import network.aika.Document;
 import network.aika.Model;
-import network.aika.neuron.INeuron;
 import network.aika.neuron.Neuron;
 import network.aika.neuron.Synapse;
-import network.aika.lattice.OrNode;
 import network.aika.neuron.relation.PositionRelation;
 import network.aika.neuron.relation.Relation;
 import org.junit.Assert;
@@ -740,7 +738,6 @@ public class NegationTest {
 
 
         Neuron inG = m.createNeuron("G");
-        OrNode inGNode = inG.get().getInputNode().get();
 
         Neuron pH = Neuron.init(m.createNeuron("H"),
                 0.001,

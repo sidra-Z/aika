@@ -77,40 +77,4 @@ public class ActivationsTest {
         Assert.assertNotNull(pA.getActivation(doc, 1, 2, false));
         Assert.assertNotNull(pA.getActivation(doc, 2, 3, false));
     }
-
-
-    @Test
-    public void testGetActivationReturnsFirstFired() {
-        Model m = new Model();
-
-        Neuron in = m.createNeuron("A");
-        OrNode inNode = in.get().getInputNode().get();
-
-        Document doc = m.createDocument("aaaaaaaaaa", 0);
-
-        inNode.processActivation(createActivation(doc, inNode));
-
-        inNode.processActivation(createActivation(doc, inNode));
-
-        inNode.processActivation(createActivation(doc, inNode));
-
-        inNode.processActivation(createActivation(doc, inNode));
-
-        inNode.processActivation(createActivation(doc, inNode));
-    }
-
-
-    private OrNode.OrActivation createActivation(Document doc, OrNode inNode) {
-        Map<Integer, Position> slots = new TreeMap<>();
-        slots.put(BEGIN, doc.lookupFinalPosition(0));
-        slots.put(END, doc.lookupFinalPosition(1));
-
-        Activation act = new Activation(doc, inNode.getOutputNeuron().get(), slots);
-        OrNode.OrActivation orAct = new OrNode.OrActivation(doc, inNode);
-        act.setInputNodeActivation(orAct);
-        orAct.setOutputAct(act);
-
-        return orAct;
-    }
-
 }

@@ -50,7 +50,6 @@ public class Converter {
     private int threadId;
     private INeuron neuron;
     private Document doc;
-    private OrNode outputNode;
     private Collection<Synapse> modifiedSynapses;
 
 
@@ -68,18 +67,17 @@ public class Converter {
 
 
     private boolean convert() {
-        outputNode = neuron.getInputNode().get();
-
         SynapseSummary ss = neuron.getSynapseSummary();
 
         if(neuron.getTotalBias(CURRENT) + ss.getPosDirSum() + ss.getPosRecSum() <= 0.0) {
-            outputNode.removeParents(threadId);
             return false;
         }
 
-
         switch(neuron.getType()) {
             case EXCITATORY:
+                neuron.unlinkInputSynapses();
+                removeOutputEntry();
+
                 if(hasOnlyWeakSynapses()) {
                     convertWeakSynapses();
                 } else {
@@ -87,8 +85,6 @@ public class Converter {
                 }
                 break;
             case INHIBITORY:
-                convertDisjunction();
-                break;
             case INPUT:
                 break;
         }
@@ -97,10 +93,17 @@ public class Converter {
     }
 
 
+    private void removeOutputEntry() {
+        if(neuron.getInputNode() != null) {
+            Node.OutputEntry oe = neuron.getInputNode();
+            oe.parent.get().removeOutputEntry(oe);
+            neuron.setInputNode(null);
+        }
+    }
+
+
     private void convertConjunction() {
         SynapseSummary ss = neuron.getSynapseSummary();
-
-        outputNode.removeParents(threadId);
 
         List<Synapse> candidates = prepareCandidates();
 
@@ -134,7 +137,7 @@ public class Converter {
             } else {
                 NodeContext nlNodeContext = expandNode(nodeContext, s);
                 if (nlNodeContext != null) {
-                    outputNode.addInput(nlNodeContext.getSynapseIds(), threadId, nlNodeContext.node, true);
+                    nlNodeContext.node.addOutputNeuron(nlNodeContext.getSynapseIds(), neuron.getProvider(), threadId);
                     remainingSum -= v;
                 }
             }
@@ -147,7 +150,7 @@ public class Converter {
         }
 
         if(nodeContext != null && !optionalInputMode) {
-            outputNode.addInput(nodeContext.getSynapseIds(), threadId, nodeContext.node, true);
+            nodeContext.node.addOutputNeuron(nodeContext.getSynapseIds(), neuron.getProvider(), threadId);
         }
     }
 
@@ -176,22 +179,13 @@ public class Converter {
             if (!s.isRecurrent()) {
                 sum += s.getWeight();
 
-                NodeContext nlNodeContext = expandNode(null, s);
-                outputNode.addInput(nlNodeContext.getSynapseIds(), threadId, nlNodeContext.node, true);
+//                NodeContext nlNodeContext = expandNode(null, s);
+//                outputNode.addInput(nlNodeContext.getSynapseIds(), threadId, nlNodeContext.node, true);
+                s.getInput().get().getOutputSynapses().add(s);
 
                 if(sum > neuron.getBias()) {
 //                    break;  // siehe: AIKA-1
                 }
-            }
-        }
-    }
-
-
-    private void convertDisjunction() {
-        for (Synapse s : modifiedSynapses) {
-            if (!s.isRecurrent() && !s.isWeak(CURRENT)) {
-                NodeContext nlNodeContext = expandNode(null, s);
-                outputNode.addInput(nlNodeContext.getSynapseIds(), threadId, nlNodeContext.node, false);
             }
         }
     }

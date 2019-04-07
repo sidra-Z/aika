@@ -5,7 +5,7 @@ import network.aika.Document;
 import network.aika.Utils;
 import network.aika.Writable;
 import network.aika.lattice.InputNode.InputActivation;
-import network.aika.lattice.OrNode.OrActivation;
+import network.aika.lattice.Node;
 import network.aika.neuron.INeuron;
 import network.aika.neuron.INeuron.SynapseSummary;
 import network.aika.neuron.INeuron.Type;
@@ -69,7 +69,7 @@ public final class Activation implements Comparable<Activation> {
     private long visited = 0;
 
     private Map<Integer, Position> slots = new TreeMap<>();
-    private OrActivation inputNodeActivation;
+    private Node.Link inputNodeLink;
     private InputActivation outputNodeActivation;
     private TreeSet<Link> selectedInputLinks = new TreeSet<>(INPUT_COMP);
     private TreeMap<Link, Link> inputLinks = new TreeMap<>(INPUT_COMP);
@@ -130,13 +130,13 @@ public final class Activation implements Comparable<Activation> {
     }
 
 
-    public void setInputNodeActivation(OrActivation inputNodeActivation) {
-        this.inputNodeActivation = inputNodeActivation;
+    public void setInputNodeLink(Node.Link inputNodeLink) {
+        this.inputNodeLink = inputNodeLink;
     }
 
 
-    public OrActivation getInputNodeActivation() {
-        return inputNodeActivation;
+    public Node.Link getInputNodeLink() {
+        return inputNodeLink;
     }
 
     public InputActivation getOutputNodeActivation() {

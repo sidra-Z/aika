@@ -35,7 +35,7 @@ public abstract class NodeActivation<T extends Node> implements Comparable<NodeA
     public boolean registered;
 
     TreeMap<Integer, AndNode.Link> outputsToAndNode = new TreeMap<>();
-    TreeMap<Integer, OrNode.Link> outputsToOrNode = new TreeMap<>();
+    TreeMap<Integer, Node.Link> outputsToNeurons = new TreeMap<>();
 
 
     public NodeActivation(Document doc, T node) {

@@ -48,7 +48,6 @@ public class SuspensionTest {
         Model m = new Model(new DummySuspensionHook(), 1);
 
         Neuron n = m.createNeuron("A");
-        n.get().getInputNode().suspend(Provider.SuspensionMode.SAVE);
         n.suspend(Provider.SuspensionMode.SAVE);
 
         int id = n.getId();

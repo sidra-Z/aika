@@ -169,7 +169,7 @@ public class InputNode extends Node<InputNode, InputActivation> {
             lock.releaseReadLock();
         }
 
-        propagateToOrNode(act);
+        propagateToOutputNeuron(act);
     }
 
 

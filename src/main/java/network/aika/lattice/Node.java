@@ -19,6 +19,13 @@ package network.aika.lattice;
 
 import network.aika.*;
 import network.aika.Document;
+import network.aika.neuron.INeuron;
+import network.aika.neuron.Neuron;
+import network.aika.neuron.Synapse;
+import network.aika.neuron.activation.Activation;
+import network.aika.neuron.activation.Linker;
+import network.aika.neuron.activation.Position;
+import network.aika.neuron.relation.Relation;
 
 import java.io.*;
 import java.util.*;
@@ -48,7 +55,7 @@ public abstract class Node<T extends Node, A extends NodeActivation<T>> extends 
 
 
     TreeMap<AndNode.Refinement, AndNode.RefValue> andChildren;
-    TreeSet<OrNode.OrEntry> orChildren;
+    TreeSet<OutputEntry> outputNeurons;
 
     int level;
 
@@ -142,22 +149,37 @@ public abstract class Node<T extends Node, A extends NodeActivation<T>> extends 
     }
 
 
-    void addOrChild(OrNode.OrEntry rv) {
+    void addOutputNeuron(int[] synapseIds, Neuron outputNeuron, int threadId) {
+        changeNumberOfNeuronRefs(threadId, provider.getModel().visitedCounter.addAndGet(1), 1);
+
+        OutputEntry oe = new OutputEntry(synapseIds, getProvider(), outputNeuron);
+        addOutputEntry(oe);
+        setModified();
+
         lock.acquireWriteLock();
-        if (orChildren == null) {
-            orChildren = new TreeSet<>();
-        }
-        orChildren.add(rv);
+        setModified();
+        outputNeuron.get().setInputNode(oe);
         lock.releaseWriteLock();
     }
 
 
-    void removeOrChild(OrNode.OrEntry rv) {
+
+    void addOutputEntry(OutputEntry rv) {
         lock.acquireWriteLock();
-        if (orChildren != null) {
-            orChildren.remove(rv);
-            if (orChildren.isEmpty()) {
-                orChildren = null;
+        if (outputNeurons == null) {
+            outputNeurons = new TreeSet<>();
+        }
+        outputNeurons.add(rv);
+        lock.releaseWriteLock();
+    }
+
+
+    void removeOutputEntry(OutputEntry rv) {
+        lock.acquireWriteLock();
+        if (outputNeurons != null) {
+            outputNeurons.remove(rv);
+            if (outputNeurons.isEmpty()) {
+                outputNeurons = null;
             }
         }
         lock.releaseWriteLock();
@@ -248,19 +270,35 @@ public abstract class Node<T extends Node, A extends NodeActivation<T>> extends 
     }
 
 
-    protected void propagateToOrNode(NodeActivation inputAct) {
-        Document doc = inputAct.getDocument();
+    protected void propagateToOutputNeuron(NodeActivation inputAct) {
         try {
             lock.acquireReadLock();
-            if (orChildren != null) {
-                for (OrNode.OrEntry oe : orChildren) {
-                    oe.child.get(doc).addActivation(oe, inputAct);
+            if (outputNeurons != null) {
+                for (OutputEntry oe : outputNeurons) {
+                    propagate(oe, inputAct);
                 }
             }
         } finally {
             lock.releaseReadLock();
         }
     }
+
+
+    private void propagate(OutputEntry oe, NodeActivation inputAct) {
+        Document doc = inputAct.getDocument();
+        INeuron n = oe.child.get(doc);
+
+        Activation act = new Activation(doc, n, oe.getSlots(inputAct));
+
+        Link ol = new Link(oe, inputAct);
+        act.setInputNodeLink(ol);
+        ol.setOutput(act);
+
+        doc.getUpperBoundQueue().add(act);
+
+        ol.linkOutputActivation(act);
+    }
+
 
 
     /**
@@ -287,9 +325,6 @@ public abstract class Node<T extends Node, A extends NodeActivation<T>> extends 
             andChildren.firstEntry().getValue().child.get().remove();
         }
 
-        while (orChildren != null && !orChildren.isEmpty()) {
-            orChildren.pollFirst().child.get().remove();
-        }
         lock.releaseWriteLock();
 
         isRemoved = true;
@@ -396,9 +431,9 @@ public abstract class Node<T extends Node, A extends NodeActivation<T>> extends 
             out.writeInt(0);
         }
 
-        if (orChildren != null) {
-            out.writeInt(orChildren.size());
-            for (OrNode.OrEntry oe : orChildren) {
+        if (outputNeurons != null) {
+            out.writeInt(outputNeurons.size());
+            for (OutputEntry oe : outputNeurons) {
                 oe.write(out);
             }
         } else {
@@ -420,10 +455,10 @@ public abstract class Node<T extends Node, A extends NodeActivation<T>> extends 
 
         s = in.readInt();
         for (int i = 0; i < s; i++) {
-            if (orChildren == null) {
-                orChildren = new TreeSet<>();
+            if (outputNeurons == null) {
+                outputNeurons = new TreeSet<>();
             }
-            orChildren.add(OrNode.OrEntry.read(in, m));
+            outputNeurons.add(OutputEntry.read(in, m));
         }
 
         threads = new ThreadState[m.numberOfThreads];
@@ -440,13 +475,152 @@ public abstract class Node<T extends Node, A extends NodeActivation<T>> extends 
             case 'A':
                 n = new AndNode();
                 break;
-            case 'O':
-                n = new OrNode();
-                break;
         }
         n.provider = p;
 
         n.readFields(in, p.getModel());
         return n;
     }
+
+
+    public static class OutputEntry implements Comparable<OutputEntry>, Writable {
+        int[] synapseIds;
+        TreeMap<Integer, Integer> revSynapseIds = new TreeMap<>();
+        Provider<? extends Node> parent;
+        Neuron child;
+
+        private OutputEntry() {}
+
+        public OutputEntry(int[] synapseIds, Provider<? extends Node> parent, Neuron child) {
+            this.synapseIds = synapseIds;
+            for(int ofs = 0; ofs < synapseIds.length; ofs++) {
+                revSynapseIds.put(synapseIds[ofs], ofs);
+            }
+
+            this.parent = parent;
+            this.child = child;
+        }
+
+
+        SortedMap<Integer, Position> getSlots(NodeActivation inputAct) {
+            SortedMap<Integer, Position> slots = new TreeMap<>();
+            for(int i = 0; i < synapseIds.length; i++) {
+                int synapseId = synapseIds[i];
+
+                Synapse s = child.getSynapseById(synapseId);
+                for(Map.Entry<Integer, Relation> me: s.getRelations().entrySet()) {
+                    Relation rel = me.getValue();
+                    if(me.getKey() == Synapse.OUTPUT) {
+                        Activation iAct = inputAct.getInputActivation(i);
+                        rel.mapSlots(slots, iAct);
+                    }
+                }
+            }
+            return slots;
+        }
+
+
+        @Override
+        public void write(DataOutput out) throws IOException {
+            out.writeInt(synapseIds.length);
+            for(int i = 0; i < synapseIds.length; i++) {
+                Integer ofs = synapseIds[i];
+                out.writeBoolean(ofs != null);
+                out.writeInt(ofs);
+            }
+            out.writeInt(parent.getId());
+            out.writeInt(child.getId());
+        }
+
+        public static OutputEntry read(DataInput in, Model m)  throws IOException {
+            OutputEntry rv = new OutputEntry();
+            rv.readFields(in, m);
+            return rv;
+        }
+
+        @Override
+        public void readFields(DataInput in, Model m) throws IOException {
+            int l = in.readInt();
+            synapseIds = new int[l];
+            for(int i = 0; i < l; i++) {
+                if(in.readBoolean()) {
+                    Integer ofs = in.readInt();
+                    synapseIds[i] = ofs;
+                    revSynapseIds.put(ofs, i);
+                }
+            }
+            parent = m.lookupNodeProvider(in.readInt());
+            child = m.lookupNeuron(in.readInt());
+        }
+
+
+        @Override
+        public int compareTo(OutputEntry oe) {
+            int r = child.compareTo(oe.child);
+            if(r != 0) return r;
+
+            r = parent.compareTo(oe.parent);
+            if(r != 0) return r;
+
+            r = Integer.compare(synapseIds.length, oe.synapseIds.length);
+            if(r != 0) return r;
+
+            for(int i = 0; i < synapseIds.length; i++) {
+                r = Integer.compare(synapseIds[i], oe.synapseIds[i]);
+                if(r != 0) return r;
+            }
+            return 0;
+        }
+    }
+
+
+    public static class Link {
+        public OutputEntry oe;
+
+        private NodeActivation<?> input;
+        private Activation output;
+
+        public Link(OutputEntry oe, NodeActivation<?> input) {
+            this.oe = oe;
+            this.input = input;
+        }
+
+
+        public int size() {
+            return oe.synapseIds.length;
+        }
+
+        public int get(int i) {
+            return oe.synapseIds[i];
+        }
+
+
+        void linkOutputActivation(Activation act) {
+            Linker l = act.getDocument().getLinker();
+            for (int i = 0; i < size(); i++) {
+                int synId = get(i);
+                Synapse s = act.getSynapseById(synId);
+                Activation iAct = input.getInputActivation(i);
+                l.link(s, iAct, act);
+            }
+            l.process();
+        }
+
+
+        Collection<Activation.Link> getInputLinks(Neuron n) {
+            List<Activation.Link> inputActs = new ArrayList<>();
+            for (int i = 0; i < size(); i++) {
+                int synId = get(i);
+                Synapse s = n.getSynapseById(synId);
+                Activation iAct = input.getInputActivation(i);
+                inputActs.add(new Activation.Link(s, iAct, null));
+            }
+            return inputActs;
+        }
+
+        public void setOutput(Activation output) {
+            this.output = output;
+        }
+    }
+
 }
